@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Balok - Lyy 🌸</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 50%, #f9a8d4 100%);
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(236, 72, 153, 0.15);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            box-shadow: 0 12px 48px rgba(236, 72, 153, 0.25);
+        }
+        .btn {
+            transition: all 0.3s ease;
+            border-radius: 12px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.3);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        canvas {
+            border-radius: 12px;
+            background: white;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="card p-8 mb-6 text-center fade-in">
+            <h1 class="text-4xl font-bold text-pink-600 mb-2">🌸 Kalkulator Analisis Balok</h1>
+            <p class="text-pink-500 text-lg">Halo, Lyy 🌸 Ada yang bisa saya bantu hari ini?</p>
+        </div>
+
+        <!-- Input Section -->
+        <div class="card p-6 mb-6 fade-in">
+            <h2 class="text-2xl font-semibold text-pink-600 mb-4">⚙️ Pengaturan Balok</h2>
+            
+            <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-pink-700 font-medium mb-2">Panjang Balok (m)</label>
+                    <input type="number" id="beamLength" value="6" min="1" class="w-full px-4 py-2 border-2 border-pink-200 rounded-lg focus:border-pink-400 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-pink-700 font-medium mb-2">Jenis Tumpuan A (Kiri)</label>
+                    <select id="supportA" class="w-full px-4 py-2 border-2 border-pink-200 rounded-lg focus:border-pink-400 focus:outline-none">
+                        <option value="sendi">Sendi (↑)</option>
+                        <option value="jepit">Jepit (↑ →)</option>
+                        <option value="rol">Rol (↑)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-pink-700 font-medium mb-2">Jenis Tumpuan B (Kanan)</label>
+                    <select id="supportB" class="w-full px-4 py-2 border-2 border-pink-200 rounded-lg focus:border-pink-400 focus:outline-none">
+                        <option value="rol">Rol (↑)</option>
+                        <option value="sendi">Sendi (↑)</option>
+                        <option value="jepit">Jepit (↑ →)</option>
+                    </select>
+                </div>
+            </div>
+
+            <h3 class="text-xl font-semibold text-pink-600 mb-3">📦 Beban-beban</h3>
+            <div id="loadsList" class="space-y-3 mb-4"></div>
+            
+            <div class="flex gap-2 mb-4">
+                <button onclick="addLoad('point')" class="btn bg-pink-400 hover:bg-pink-500 text-white px-4 py-2 font-medium">+ Beban Titik</button>
+                <button onclick="addLoad('udl')" class="btn bg-pink-400 hover:bg-pink-500 text-white px-4 py-2 font-medium">+ Beban Merata</button>
+                <button onclick="addLoad('triangular')" class="btn bg-pink-400 hover:bg-pink-500 text-white px-4 py-2 font-medium">+ Beban Segitiga</button>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="calculate()" class="btn bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white px-8 py-3 font-bold text-lg flex-1">✨ Hitung</button>
+                <button onclick="reset()" class="btn bg-pink-200 hover:bg-pink-300 text-pink-700 px-6 py-3 font-medium">🔄 Reset</button>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="hidden">
+            <!-- Reactions -->
+            <div class="card p-6 mb-6 fade-in">
+                <h2 class="text-2xl font-semibold text-pink-600 mb-4">📊 Reaksi Tumpuan</h2>
+                <div id="reactionsTable"></div>
+            </div>
+
+            <!-- Equilibrium Check -->
+            <div class="card p-6 mb-6 fade-in">
+                <h2 class="text-2xl font-semibold text-pink-600 mb-4">⚖️ Kontrol Keseimbangan</h2>
+                <div id="equilibriumCheck"></div>
+            </div>
+
+            <!-- Diagrams -->
+            <div class="card p-6 mb-6 fade-in">
+                <h2 class="text-2xl font-semibold text-pink-600 mb-4">📈 Diagram Gaya Lintang (SFD)</h2>
+                <canvas id="sfdCanvas" width="800" height="300" class="w-full"></canvas>
+            </div>
+
+            <div class="card p-6 mb-6 fade-in">
+                <h2 class="text-2xl font-semibold text-pink-600 mb-4">📉 Diagram Momen (BMD)</h2>
+                <canvas id="bmdCanvas" width="800" height="300" class="w-full"></canvas>
+                <div id="maxMoment" class="mt-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let loads = [];
+        let loadCounter = 0;
+
+        function addLoad(type) {
+            loadCounter++;
+            const loadDiv = document.createElement('div');
+            loadDiv.className = 'card p-4 fade-in';
+            loadDiv.id = `load-${loadCounter}`;
+            
+            let html = `<div class="flex gap-3 items-center">
+                <div class="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-pink-700 text-sm mb-1">Jenis</label>
+                        <input type="text" value="${type === 'point' ? 'Titik' : type === 'udl' ? 'Merata' : 'Segitiga'}" disabled class="w-full px-3 py-1 border border-pink-200 rounded-lg bg-pink-50 text-sm">
+                    </div>`;
+            
+            if (type === 'point') {
+                html += `
+                    <div>
+                        <label class="block text-pink-700 text-sm mb-1">Posisi (m)</label>
+                        <input type="number" id="pos-${loadCounter}" value="3" step="0.1" class="w-full px-3 py-1 border-2 border-pink-200 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-pink-700 text-sm mb-1">Beban (kN)</label>
+                        <input type="number" id="val-${loadCounter}" value="10" step="0.1" class="w-full px-3 py-1 border-2 border-pink-200 rounded-lg text-sm">
+                    </div>`;
+            } else if (type === 'udl') {
+                html += `
+                    <div>
+                        <label class="block text-pink-700 text-sm mb-1">Mulai (m)</label>
+                        <input type="number" id="start-${loadCounter}" value="1" step="0.1" class="w-full px-3 py-1 border-2 border-pink-200 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-pink-700 text-sm mb-1">Akhir (m)</label>
+                        <input type="number" id="end-${loadCounter}" value="5" step="0.1" class="w-full px-3 py-1 border-2 border-pink-200 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-pink-700 text-sm mb-1">w (kN/m)</label>
+                        <input type="number" id="val-${loadCounter}" value="5" step="0.1" class="w-full px-3 py-1 border-2 border-pink-200 rounded-lg text-sm">
+                    </div>`;
+            } else {
+                html += `
+                    <div>
+                        <label class="block text-pink-700 text-sm mb-1">Mulai (m)</label>
+                        <input type="number" id="start-${loadCounter}" value="1" step="0.1" class="w-full px-3 py-1 border-2 border-pink-200 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-pink-700 text-sm mb-1">Akhir (m)</label>
+                        <input type="number" id="end-${loadCounter}" value="5" step="0.1" class="w-full px-3 py-1 border-2 border-pink-200 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-pink-700 text-sm mb-1">w max (kN/m)</label>
+                        <input type="number" id="val-${loadCounter}" value="8" step="0.1" class="w-full px-3 py-1 border-2 border-pink-200 rounded-lg text-sm">
+                    </div>`;
+            }
+            
+            html += `</div>
+                <button onclick="removeLoad(${loadCounter})" class="btn bg-red-400 hover:bg-red-500 text-white px-3 py-2 text-sm">🗑️</button>
+            </div>`;
+            
+            loadDiv.innerHTML = html;
+            document.getElementById('loadsList').appendChild(loadDiv);
+            
+            loads.push({id: loadCounter, type: type});
+        }
+
+        function removeLoad(id) {
+            document.getElementById(`load-${id}`).remove();
+            loads = loads.filter(l => l.id !== id);
+        }
+
+        function calculate() {
+            const L = parseFloat(document.getElementById('beamLength').value);
+            const supportA = document.getElementById('supportA').value;
+            const supportB = document.getElementById('supportB').value;
+
+            let loadData = [];
+            for (let load of loads) {
+                const id = load.id;
+                if (load.type === 'point') {
+                    loadData.push({
+                        type: 'point',
+                        position: parseFloat(document.getElementById(`pos-${id}`).value),
+                        value: parseFloat(document.getElementById(`val-${id}`).value)
+                    });
+                } else if (load.type === 'udl') {
+                    loadData.push({
+                        type: 'udl',
+                        start: parseFloat(document.getElementById(`start-${id}`).value),
+                        end: parseFloat(document.getElementById(`end-${id}`).value),
+                        value: parseFloat(document.getElementById(`val-${id}`).value)
+                    });
+                } else {
+                    loadData.push({
+                        type: 'triangular',
+                        start: parseFloat(document.getElementById(`start-${id}`).value),
+                        end: parseFloat(document.getElementById(`end-${id}`).value),
+                        value: parseFloat(document.getElementById(`val-${id}`).value)
+                    });
+                }
+            }
+
+            // Calculate reactions
+            let sumFy = 0, sumMA = 0;
+            
+            for (let load of loadData) {
+                if (load.type === 'point') {
+                    sumFy += load.value;
+                    sumMA += load.value * load.position;
+                } else if (load.type === 'udl') {
+                    const totalLoad = load.value * (load.end - load.start);
+                    const centroid = (load.start + load.end) / 2;
+                    sumFy += totalLoad;
+                    sumMA += totalLoad * centroid;
+                } else {
+                    const totalLoad = 0.5 * load.value * (load.end - load.start);
+                    const centroid = load.start + (2/3) * (load.end - load.start);
+                    sumFy += totalLoad;
+                    sumMA += totalLoad * centroid;
+                }
+            }
+
+            const RB = sumMA / L;
+            const RA = sumFy - RB;
+            const RAH = 0; // For simple beams
+
+            // Equilibrium check
+            const checkFy = Math.abs(RA + RB - sumFy);
+            const checkMA = Math.abs(RA * 0 + RB * L - sumMA);
+            
+            const isFyOK = checkFy < 0.01;
+            const isMAOK = checkMA < 0.01;
+
+            // Display reactions
+            let reactionsHTML = `<div class="grid md:grid-cols-3 gap-4">
+                <div class="bg-pink-50 p-4 rounded-lg">
+                    <div class="text-pink-700 font-medium">Reaksi A (RA)</div>
+                    <div class="text-2xl font-bold text-pink-600">${RA.toFixed(2)} kN</div>
+                    <div class="text-sm text-pink-500">${RA >= 0 ? '↑ ke atas' : '↓ ke bawah'}</div>
+                </div>
+                <div class="bg-pink-50 p-4 rounded-lg">
+                    <div class="text-pink-700 font-medium">Reaksi B (RB)</div>
+                    <div class="text-2xl font-bold text-pink-600">${RB.toFixed(2)} kN</div>
+                    <div class="text-sm text-pink-500">${RB >= 0 ? '↑ ke atas' : '↓ ke bawah'}</div>
+                </div>`;
+            
+            if (supportA === 'jepit' || supportA === 'sendi') {
+                reactionsHTML += `<div class="bg-pink-50 p-4 rounded-lg">
+                    <div class="text-pink-700 font-medium">Reaksi Horizontal (RAH)</div>
+                    <div class="text-2xl font-bold text-pink-600">${RAH.toFixed(2)} kN</div>
+                    <div class="text-sm text-pink-500">${RAH >= 0 ? '→ ke kanan' : '← ke kiri'}</div>
+                </div>`;
+            }
+            reactionsHTML += `</div>`;
+            document.getElementById('reactionsTable').innerHTML = reactionsHTML;
+
+            // Display equilibrium check
+            let eqHTML = `<div class="space-y-3">
+                <div class="flex items-center gap-3 bg-pink-50 p-4 rounded-lg">
+                    <span class="text-2xl">${isFyOK ? '✅' : '⚠️'}</span>
+                    <div>
+                        <div class="font-medium text-pink-700">ΣFy = 0</div>
+                        <div class="text-sm text-pink-600">${RA.toFixed(2)} + ${RB.toFixed(2)} - ${sumFy.toFixed(2)} = ${(RA + RB - sumFy).toFixed(3)}</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 bg-pink-50 p-4 rounded-lg">
+                    <span class="text-2xl">${isMAOK ? '✅' : '⚠️'}</span>
+                    <div>
+                        <div class="font-medium text-pink-700">ΣMA = 0</div>
+                        <div class="text-sm text-pink-600">${RB.toFixed(2)} × ${L} - ${sumMA.toFixed(2)} = ${(RB * L - sumMA).toFixed(3)}</div>
+                    </div>
+                </div>
+            </div>`;
+            document.getElementById('equilibriumCheck').innerHTML = eqHTML;
+
+            // Calculate and draw diagrams
+            drawSFD(L, RA, RB, loadData);
+            drawBMD(L, RA, RB, loadData);
+
+            document.getElementById('results').classList.remove('hidden');
+        }
+
+        function drawSFD(L, RA, RB, loadData) {
+            const canvas = document.getElementById('sfdCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            const margin = 60;
+            const plotW = w - 2 * margin;
+            const plotH = h - 2 * margin;
+            const scale = plotW / L;
+            
+            // Calculate shear values at key points
+            let points = [{x: 0, v: 0}];
+            let currentV = RA;
+            points.push({x: 0, v: currentV});
+            
+            // Sort loads by position
+            let sortedLoads = [...loadData].sort((a, b) => {
+                const posA = a.position || a.start;
+                const posB = b.position || b.start;
+                return posA - posB;
+            });
+            
+            for (let load of sortedLoads) {
+                if (load.type === 'point') {
+                    points.push({x: load.position, v: currentV});
+                    currentV -= load.value;
+                    points.push({x: load.position, v: currentV});
+                } else if (load.type === 'udl') {
+                    points.push({x: load.start, v: currentV});
+                    currentV -= load.value * (load.end - load.start);
+                    points.push({x: load.end, v: currentV});
+                } else {
+                    points.push({x: load.start, v: currentV});
+                    const totalLoad = 0.5 * load.value * (load.end - load.start);
+                    currentV -= totalLoad;
+                    points.push({x: load.end, v: currentV});
+                }
+            }
+            
+            points.push({x: L, v: currentV});
+            currentV -= RB;
+            points.push({x: L, v: currentV});
+            
+            // Find max and min for scaling
+            const maxV = Math.max(...points.map(p => Math.abs(p.v)));
+            const vScale = (plotH / 2 - 20) / (maxV || 1);
+            
+            // Draw axes
+            ctx.strokeStyle = '#ec4899';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(margin, h/2);
+            ctx.lineTo(w - margin, h/2);
+            ctx.stroke();
+            
+            // Draw diagram
+            ctx.strokeStyle = '#f472b6';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let i = 0; i < points.length; i++) {
+                const x = margin + points[i].x * scale;
+                const y = h/2 - points[i].v * vScale;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // Fill areas with hatching
+            for (let i = 0; i < points.length - 1; i++) {
+                const x1 = margin + points[i].x * scale;
+                const y1 = h/2 - points[i].v * vScale;
+                const x2 = margin + points[i+1].x * scale;
+                const y2 = h/2 - points[i+1].v * vScale;
+                
+                if (points[i].v > 0 || points[i+1].v > 0) {
+                    ctx.strokeStyle = '#fda4af';
+                    ctx.lineWidth = 1;
+                    for (let x = x1; x < x2; x += 5) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, h/2);
+                        ctx.lineTo(x, Math.min(y1, y2));
+                        ctx.stroke();
+                    }
+                } else if (points[i].v < 0 || points[i+1].v < 0) {
+                    ctx.strokeStyle = '#fda4af';
+                    ctx.lineWidth = 1;
+                    for (let y = h/2; y < Math.max(y1, y2); y += 5) {
+                        ctx.beginPath();
+                        ctx.moveTo(x1, y);
+                        ctx.lineTo(x2, y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            // Labels
+            ctx.fillStyle = '#be185d';
+            ctx.font = 'bold 14px Inter';
+            ctx.fillText('Gaya Lintang (kN)', margin, 20);
+            ctx.fillText('0', margin - 20, h/2 + 5);
+        }
+
+        function drawBMD(L, RA, RB, loadData) {
+            const canvas = document.getElementById('bmdCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            const margin = 60;
+            const plotW = w - 2 * margin;
+            const plotH = h - 2 * margin;
+            const scale = plotW / L;
+            
+            // Calculate moment at multiple points
+            let maxM = 0;
+            let maxMPos = 0;
+            let moments = [];
+            
+            for (let x = 0; x <= L; x += L/100) {
+                let M = RA * x;
+                
+                for (let load of loadData) {
+                    if (load.type === 'point' && x >= load.position) {
+                        M -= load.value * (x - load.position);
+                    } else if (load.type === 'udl' && x >= load.start) {
+                        const endPos = Math.min(x, load.end);
+                        const length = endPos - load.start;
+                        M -= load.value * length * (x - load.start - length/2);
+                    } else if (load.type === 'triangular' && x >= load.start) {
+                        const endPos = Math.min(x, load.end);
+                        const length = endPos - load.start;
+                        const loadLength = load.end - load.start;
+                        const w = load.value * length / loadLength;
+                        M -= (1/6) * w * length * (2 * (x - load.start) - length);
+                    }
+                }
+                
+                moments.push({x, M});
+                if (Math.abs(M) > Math.abs(maxM)) {
+                    maxM = M;
+                    maxMPos = x;
+                }
+            }
+            
+            const mScale = (plotH / 2 - 20) / (Math.abs(maxM) || 1);
+            
+            // Draw axes
+            ctx.strokeStyle = '#ec4899';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(margin, h/2);
+            ctx.lineTo(w - margin, h/2);
+            ctx.stroke();
+            
+            // Draw curve
+            ctx.strokeStyle = '#f472b6';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let i = 0; i < moments.length; i++) {
+                const x = margin + moments[i].x * scale;
+                const y = h/2 - moments[i].M * mScale;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // Fill with hatching
+            for (let i = 0; i < moments.length - 1; i++) {
+                const x = margin + moments[i].x * scale;
+                const y = h/2 - moments[i].M * mScale;
+                
+                if (moments[i].M > 0) {
+                    ctx.strokeStyle = '#fda4af';
+                    ctx.lineWidth = 1;
+                    for (let hx = x; hx < x + 8; hx += 5) {
+                        ctx.beginPath();
+                        ctx.moveTo(hx, h/2);
+                        ctx.lineTo(hx, y);
+                        ctx.stroke();
+                    }
+                } else {
+                    ctx.strokeStyle = '#fda4af';
+                    ctx.lineWidth = 1;
+                    for (let hy = h/2; hy < y; hy += 5) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, hy);
+                        ctx.lineTo(x + 8, hy);
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            // Labels
+            ctx.fillStyle = '#be185d';
+            ctx.font = 'bold 14px Inter';
+            ctx.fillText('Momen (kNm)', margin, 20);
+            
+            // Max moment
+            document.getElementById('maxMoment').innerHTML = `
+                <div class="bg-pink-50 p-4 rounded-lg">
+                    <div class="text-pink-700 font-medium">Momen Maksimum</div>
+                    <div class="text-2xl font-bold text-pink-600">${maxM.toFixed(2)} kNm</div>
+                    <div class="text-sm text-pink-500">Pada posisi x = ${maxMPos.toFixed(2)} m</div>
+                </div>
+            `;
+        }
+
+        function reset() {
+            loads = [];
+            loadCounter = 0;
+            document.getElementById('loadsList').innerHTML = '';
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('beamLength').value = 6;
+        }
+
+        // Add initial load
+        addLoad('point');
+    </script>
+</body>
+</html>
